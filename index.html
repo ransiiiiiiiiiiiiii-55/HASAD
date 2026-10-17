@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام الاستعلام عن الشهادات المعتمدة</title>
+  <style>
+    :root {
+      --primary-color: #0d6efd;
+      --success-color: #198754;
+      --error-color: #dc3545;
+      --bg-color: #f8f9fa;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 35px 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+    }
+
+    .badge-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    h1 {
+      font-size: 22px;
+      color: #212529;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 14px;
+      color: #6c757d;
+      margin-bottom: 25px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: center;
+      transition: border-color 0.3s;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary-color);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #0b5ed7;
+    }
+
+    .result-card {
+      margin-top: 25px;
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    .result-card.success {
+      background-color: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      color: #1b5e20;
+    }
+
+    .result-card.error {
+      background-color: #ffebee;
+      border: 1px solid #ef9a9a;
+      color: #b71c1c;
+    }
+
+    .result-card.loading {
+      background-color: #e9ecef;
+      color: #495057;
+    }
+
+    .status-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .info-row {
+      margin-top: 8px;
+      font-size: 15px;
+      text-align: right;
+      line-height: 1.6;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="badge-icon">📜</div>
+    <h1>التحقق من صحة الشهادة</h1>
+    <p class="subtitle">أدخل رقم الشهادة المطبوع للتحقق من أصلية البيانات</p>
+
+    <div class="input-group">
+      <input type="text" id="certInput" placeholder="مثال: HSD-2610-C-001" autocomplete="off">
+    </div>
+
+    <button onclick="checkCertificate()">تحقق من الشهادة</button>
+
+    <div id="resultCard" class="result-card"></div>
+  </div>
+
+  <script>
+    // الرابط المباشر للـ API الخاص بك
+    const API_URL = "https://script.google.com/macros/s/AKfycbzvf6VlO32hsofCPyksiNEIFa08dGacxF9Mdo8oLeXPEkLYW6lK0rvsOJ_SKGUKlvTd/exec";
+
+    async function checkCertificate() {
+      const certInput = document.getElementById("certInput").value.trim();
+      const resultCard = document.getElementById("resultCard");
+
+      if (!certInput) {
+        showResult("error", "تنبيه", "يرجى إدخال رقم الشهادة أولاً.");
+        return;
+      }
+
+      // إظهار رسالة التحميل
+      showResult("loading", "جاري التحقق...", "يرجى الانتظار جاري جلب البيانات من النظام.");
+
+      try {
+        const response = await fetch(`${API_URL}?cert=${encodeURIComponent(certInput)}`);
+        const data = await response.json();
+
+        if (data.status === "success") {
+          let detailsText = `<strong>صاحب الشهادة:</strong> ${data.name}<br>`;
+          detailsText += `<strong>نوع الفعالية:</strong> ${data.category}`;
+          showResult("success", "✅ " + data.message, detailsText);
+        } else {
+          showResult("error", "❌ غير متوفر", data.message || "رقم الشهادة المدخل غير موجود في السجلات.");
+        }
+      } catch (error) {
+        console.error("خطأ في الاتصال:", error);
+        showResult("error", "خطأ في الاتصال", "تعذر الاتصال بقاعدة البيانات، يرجى المحاولة لاحقاً.");
+      }
+    }
+
+    function showResult(type, title, message) {
+      const resultCard = document.getElementById("resultCard");
+      resultCard.className = `result-card ${type}`;
+      resultCard.style.display = "block";
+      resultCard.innerHTML = `
+        <div class="status-title">${title}</div>
+        <div class="info-row">${message}</div>
+      `;
+    }
+  </script>
+</body>
+</html>
